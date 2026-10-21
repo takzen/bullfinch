@@ -21,7 +21,8 @@ data, which is where Serin hit its ceiling.
 ## Data
 
 Only sets with human or source labels and a licence that allows an open model. Official test
-splits are never trained on.
+splits are never trained on, and neither is any training row that shares a text with a test row:
+in PSC 3,023 of the 4,302 training pairs reuse a summary from the test split, so they are dropped.
 
 | Set | Decision | Train / val / test | Licence |
 |---|---|---|---|
