@@ -32,6 +32,9 @@ train = [
   "pyyaml>=6.0",
 ]
 data = ["datasets>=3.0"]
+# Triton kernels for the Gated DeltaNet layers; ~1.5x faster training in WSL2 than the
+# PyTorch fallback. Linux only.
+kernels = ["flash-linear-attention>=0.5.2; sys_platform == 'linux'"]
 dev = ["pytest>=8.0"]
 
 # CUDA 12.8 wheels for the RTX 4060 (Windows). `uv sync --extra train` picks them up.
