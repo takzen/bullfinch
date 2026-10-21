@@ -99,6 +99,18 @@ SAME_ARTICLE = [
 ]
 
 
+PHRASINGS = {p.instructions: p for p in SENTIMENT + ANSWERS_QUESTION + SAME_ARTICLE}
+
+
+def canonical_label(question: TypedQuestion, key: str) -> str:
+    """Source label behind an option key, so metrics pool every phrasing of a task."""
+
+    p = PHRASINGS.get(question.instructions)
+    if p is None:
+        return key
+    return next(label for label, (k, _) in p.options.items() if k == key)
+
+
 def _pick(options: list[Phrasing], row_id: str) -> Phrasing:
     digest = hashlib.sha256(row_id.encode()).digest()
     return options[digest[0] % len(options)]
