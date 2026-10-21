@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Bullfinch (gil): black cap, grey back, rosy-red breast, perched. Serin's sibling. -->
+  <rect width="512" height="512" rx="112" fill="#0d0f14"/>
+  <!-- branch -->
+  <path d="M96 404 C190 392 320 396 424 412" stroke="#3b4150" stroke-width="14" fill="none" stroke-linecap="round"/>
+  <!-- tail -->
+  <path d="M176 318 L92 392 L118 404 L206 344 Z" fill="#2a2e37" stroke="#4a505c" stroke-width="4" stroke-linejoin="round"/>
+  <!-- white rump -->
+  <ellipse cx="184" cy="318" rx="26" ry="18" transform="rotate(-30 184 318)" fill="#e9edf2"/>
+  <!-- legs -->
+  <path d="M248 368 L242 402 M284 366 L290 402" stroke="#8a7b6b" stroke-width="9" stroke-linecap="round"/>
+  <!-- body (rosy-red breast) and head -->
+  <ellipse cx="256" cy="298" rx="122" ry="92" transform="rotate(-18 256 298)" fill="#e8604c"/>
+  <circle cx="334" cy="200" r="74" fill="#e8604c"/>
+  <!-- grey mantle -->
+  <ellipse cx="250" cy="248" rx="70" ry="34" transform="rotate(-24 250 248)" fill="#8a93a1"/>
+  <!-- black wing with a pale bar -->
+  <ellipse cx="226" cy="300" rx="92" ry="52" transform="rotate(-24 226 300)" fill="#23262e"/>
+  <path d="M180 312 L268 270" stroke="#e9edf2" stroke-width="12" stroke-linecap="round"/>
+  <!-- black cap and face round the bill -->
+  <path d="M262 196 C270 140 330 112 384 136 C404 148 414 172 410 200 L410 226 C392 222 372 214 352 210 C320 204 290 204 262 196 Z" fill="#15171c"/>
+  <!-- stout bill -->
+  <path d="M406 192 L440 210 L406 228 Z" fill="#3a3f4b" stroke="#5a606c" stroke-width="3" stroke-linejoin="round"/>
+  <!-- eye -->
+  <circle cx="346" cy="222" r="11" fill="#0d0f14"/>
+  <circle cx="350" cy="218" r="3.5" fill="#ffffff"/>
+</svg>
