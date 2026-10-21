@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bullfinch"
+version = "0.1.0"
+description = "Bullfinch 4B: a small decision model for Polish (typed questions, option-letter logits) on Qwen3.5-4B."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Bullfinch contributors" }]
+dependencies = []
+
+[project.optional-dependencies]
+# Qwen3.5 needs a recent transformers; pin the exact version that worked in run metadata.
+inference = [
+  "accelerate>=1.0",
+  "bitsandbytes>=0.45",
+  "torch>=2.7",
+  "transformers>=4.57",
+]
+serve = [
+  "bullfinch[inference]",
+  "fastapi>=0.115",
+  "uvicorn>=0.30",
+]
+train = [
+  "bullfinch[inference]",
+  "datasets>=3.0",
+  "peft>=0.13",
+  "pyyaml>=6.0",
+]
+data = ["datasets>=3.0"]
+dev = ["pytest>=8.0"]
+
+# CUDA 12.8 wheels for the RTX 4060 (Windows). `uv sync --extra train` picks them up.
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

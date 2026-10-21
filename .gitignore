@@ -5,3 +5,4 @@ data/
 artifacts/
 *.safetensors
 CLAUDE.md
+*.egg-info/
