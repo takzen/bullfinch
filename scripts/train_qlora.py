@@ -30,7 +30,7 @@ import yaml
 
 from bullfinch.engine import frame_for
 from bullfinch.questions import ANSWER_PREFILL, DecisionExample, TypedQuestion, render
-from bullfinch.sources import split_for
+from bullfinch.splits import split_for
 
 
 def load_examples(paths: list[Path]) -> list[tuple[DecisionExample, str]]:
