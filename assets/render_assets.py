@@ -36,6 +36,33 @@ p {{ font-size:24px; line-height:1.45; color:#9ca3af; margin-top:22px; max-width
 </body></html>"""
 
 
+# 1600x900 Polish card for X, the ratio X shows uncropped
+CARD_PL = f"""<!doctype html><html><head><meta charset="utf-8"><style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ width:1600px; height:900px; background:#08090c; color:#e5e5e5;
+       font-family:"Segoe UI",-apple-system,Roboto,Arial,sans-serif;
+       display:flex; align-items:center; gap:80px; padding:0 110px; }}
+.logo svg {{ width:440px; height:440px; display:block; }}
+.eyebrow {{ color:#ff8a70; font-family:Consolas,monospace; font-size:20px; font-weight:700;
+           letter-spacing:.2em; text-transform:uppercase; margin-bottom:20px; }}
+h1 {{ font-size:112px; line-height:1; font-weight:700; color:#fff; letter-spacing:-.02em; }}
+h2 {{ font-size:44px; line-height:1.2; font-weight:600; color:#ff8a70; margin-top:16px; }}
+p {{ font-size:28px; line-height:1.45; color:#9ca3af; margin-top:26px; max-width:760px; }}
+.foot {{ margin-top:40px; font-size:22px; color:#6b7280; }}
+.foot b {{ color:#e5e5e5; font-weight:600; }}
+</style></head><body>
+  <div class="logo">{LOGO}</div>
+  <div>
+    <div class="eyebrow">Nowy projekt · Kanari</div>
+    <h1>Bullfinch 4B</h1>
+    <h2>gil, polski model decyzyjny</h2>
+    <p>Wybór, tak/nie i ocena w skali po polsku. Jeden przebieg, prawdopodobieństwo dla każdej
+       opcji, działa lokalnie. Uczony tylko na danych z ręcznymi etykietami.</p>
+    <div class="foot"><b>kanari.pl</b> · rodzeństwo Serina 4B · start 21.10.2026</div>
+  </div>
+</body></html>"""
+
+
 def main() -> None:
     from playwright.sync_api import sync_playwright
 
@@ -47,8 +74,11 @@ def main() -> None:
         page = browser.new_page(viewport={"width": 1280, "height": 640})
         page.set_content(BANNER)
         page.screenshot(path=str(HERE / "bullfinch-banner.png"))
+        page = browser.new_page(viewport={"width": 1600, "height": 900})
+        page.set_content(CARD_PL)
+        page.screenshot(path=str(HERE / "bullfinch-x-pl.png"))
         browser.close()
-    for name in ("bullfinch-logo.png", "bullfinch-banner.png"):
+    for name in ("bullfinch-logo.png", "bullfinch-banner.png", "bullfinch-x-pl.png"):
         print(name, (HERE / name).stat().st_size // 1024, "KB")
 
 
