@@ -44,6 +44,8 @@ def main() -> int:
     ap.add_argument("--out", type=Path, default=Path("artifacts/bench"))
     ap.add_argument("--split", default="test")
     ap.add_argument("--adapter", help="LoRA adapter directory (default: untuned base)")
+    ap.add_argument("--base", help="base model for the local engine (default: Qwen/Qwen3.5-4B, pinned)")
+    ap.add_argument("--revision", help="pinned revision of --base")
     ap.add_argument("--ollama", help="score this Ollama model instead of the local engine")
     ap.add_argument("--url", help="score a /v1/systemone server instead of the local engine")
     ap.add_argument("--key-env", help="env var with the --url server's API key")
@@ -78,7 +80,8 @@ def main() -> int:
     else:
         from bullfinch.engine import DecisionEngine
 
-        engine = DecisionEngine(adapter=args.adapter, calibration=args.calibration,
+        base = {"model": args.base, "revision": args.revision} if args.base else {}
+        engine = DecisionEngine(**base, adapter=args.adapter, calibration=args.calibration,
                                 max_length=args.max_tokens, tta=args.tta)
     args.out.mkdir(parents=True, exist_ok=True)
     scored: dict[str, list[dict]] = defaultdict(list)
