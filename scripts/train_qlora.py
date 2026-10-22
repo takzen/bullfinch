@@ -124,6 +124,10 @@ def main() -> int:
         ids = tok(text + ANSWER_PREFILL, return_tensors="pt", add_special_tokens=False).input_ids
         return ids, codes
 
+    n_dev = len(dev)  # dev rows longer than --max-tokens would swamp GPU memory at every eval
+    dev = [ex for ex in dev if encode(ex, frame_for(ex.question), None)[0].shape[1] <= args.max_tokens]
+    print(f"dev: {len(dev)} rows ({n_dev - len(dev)} longer than {args.max_tokens} tokens left out)")
+
     def loss_for(ex: DecisionExample, ids, codes) -> tuple[torch.Tensor, bool]:
         logits = model(input_ids=ids.to(0), logits_to_keep=1).logits[0, -1].float()
         sel = torch.tensor([code_ids[c] for c in codes], device=logits.device)
