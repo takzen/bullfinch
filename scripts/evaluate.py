@@ -2,7 +2,10 @@
 """Score decision examples with the engine and report metrics per family.
 
     uv run python scripts/evaluate.py --examples data/examples/*.jsonl --tag base \
-        [--adapter artifacts/pilot/adapter] [--tta] [--limit 50]
+        [--adapter artifacts/pilot/adapter | --ollama MODEL | --url http://host:8000] [--tta] [--limit 500]
+
+* ``--limit N`` scores a random sample of N rows per family (seed 7), the same rows for every
+  model, so runs with the same --examples and --limit are directly comparable.
 
 * Every row of --split (default ``test``) is scored exactly as the server scores it
   (``DecisionEngine.logprobs``: fixed option order, frame from the question's language).
@@ -20,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import random
 import sys
 import time
 from collections import defaultdict
@@ -46,14 +50,17 @@ def main() -> int:
     ap.add_argument("--model", help="model name to send to the --url server")
     ap.add_argument("--calibration", type=Path)
     ap.add_argument("--tta", action="store_true")
-    ap.add_argument("--limit", type=int, help="first N rows per family (smoke runs)")
+    ap.add_argument("--limit", type=int, help="random sample of N rows per family (seed 7)")
     ap.add_argument("--max-tokens", type=int, default=4096)
     args = ap.parse_args()
 
     per_family: dict[str, list] = defaultdict(list)
     for ex, split in load_examples(args.examples):
-        if split == args.split and (args.limit is None or len(per_family[ex.family]) < args.limit):
+        if split == args.split:
             per_family[ex.family].append(ex)
+    if args.limit is not None:
+        rng = random.Random(7)
+        per_family = {k: rng.sample(v, min(args.limit, len(v))) for k, v in sorted(per_family.items())}
     panel = [ex for exs in per_family.values() for ex in exs]
     print(f"{len(panel)} rows: " + ", ".join(f"{k} {len(v)}" for k, v in per_family.items()), flush=True)
 
