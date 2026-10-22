@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import math
+import urllib.error
 import urllib.request
 
 from .questions import TypedQuestion
@@ -32,8 +33,13 @@ class SystemOneEngine:
         if self.key:
             headers["Authorization"] = f"Bearer {self.key}"
         req = urllib.request.Request(self.url, data=json.dumps(body).encode(), headers=headers)
-        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-            answer = json.load(resp)["answers"]["q"]
+        try:
+            with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+                answer = json.load(resp)["answers"]["q"]
+        except urllib.error.HTTPError as e:  # refused: too long, too many options for the backend
+            if 400 <= e.code < 500:
+                raise ValueError(f"server refused the request: {e.code} {e.read()[:200]!r}") from e
+            raise
         if question.type == "noul":
             p = float(answer["noul"] if "noul" in answer else answer["probabilities"]["true"])
             probs = {"true": p, "false": 1.0 - p}

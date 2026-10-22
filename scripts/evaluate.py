@@ -90,8 +90,10 @@ def main() -> int:
         for i, ex in enumerate(panel, start=1):
             try:
                 logp = engine.logprobs(ex.state, ex.question)
-            except ValueError:  # longer than --max-tokens
+            except ValueError as e:  # longer than --max-tokens, or refused by the --url server
                 skipped += 1
+                if args.url and skipped <= 5:
+                    print(f"  skipped {ex.id}: {e}", flush=True)
                 continue
             probs = {k: math.exp(v) for k, v in logp.items()}
             total = sum(probs.values())
