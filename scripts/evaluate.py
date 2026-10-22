@@ -8,6 +8,9 @@
   (``DecisionEngine.logprobs``: fixed option order, frame from the question's language).
 * ``--ollama`` scores a model served by Ollama instead (``bullfinch.ollama``), e.g.
   ``SpeakLeash/bielik-11b-v3.0-instruct:Q4_K_M``; the prompt and the scoring are the same.
+* ``--url`` scores another decision server over ``POST /v1/systemone`` (``bullfinch.systemone``):
+  state and typed question as they are, no Bullfinch template; ``--key-env`` names the env var
+  holding its API key.
 * Writes ``<out>/<tag>.jsonl`` (one scored row per example, so metrics can be recomputed
   without the GPU) and ``<out>/<tag>.json`` (``bullfinch.metrics.summarise`` per family).
 """
@@ -38,6 +41,9 @@ def main() -> int:
     ap.add_argument("--split", default="test")
     ap.add_argument("--adapter", help="LoRA adapter directory (default: untuned base)")
     ap.add_argument("--ollama", help="score this Ollama model instead of the local engine")
+    ap.add_argument("--url", help="score a /v1/systemone server instead of the local engine")
+    ap.add_argument("--key-env", help="env var with the --url server's API key")
+    ap.add_argument("--model", help="model name to send to the --url server")
     ap.add_argument("--calibration", type=Path)
     ap.add_argument("--tta", action="store_true")
     ap.add_argument("--limit", type=int, help="first N rows per family (smoke runs)")
@@ -51,7 +57,14 @@ def main() -> int:
     panel = [ex for exs in per_family.values() for ex in exs]
     print(f"{len(panel)} rows: " + ", ".join(f"{k} {len(v)}" for k, v in per_family.items()), flush=True)
 
-    if args.ollama:
+    if args.url:
+        import os
+
+        from bullfinch.systemone import SystemOneEngine
+
+        engine = SystemOneEngine(args.url, key=os.environ.get(args.key_env) if args.key_env else None,
+                                 model=args.model)
+    elif args.ollama:
         from bullfinch.ollama import OllamaEngine
 
         engine = OllamaEngine(args.ollama, tta=args.tta, num_ctx=args.max_tokens)
