@@ -26,7 +26,7 @@ from pathlib import Path
 from bullfinch.sources import SOURCES, text_key
 from bullfinch.splits import split_for
 
-# (source, hf dataset id, hf split, our split or None to split train rows by group)
+# (source, hf dataset id or (id, config), hf split, our split or None to split train rows by group)
 PLAN = [
     ("polemo_in", "allegro/klej-polemo2-in", "train", None),
     ("polemo_in", "allegro/klej-polemo2-in", "validation", "dev"),
@@ -36,6 +36,10 @@ PLAN = [
     ("dyk", "allegro/klej-dyk", "test", "test"),
     ("psc", "allegro/klej-psc", "train", None),
     ("psc", "allegro/klej-psc", "test", "test"),
+    # evaluation only
+    ("belebele", ("facebook/belebele", "pol_Latn"), "test", "test"),
+    ("include", ("CohereLabs/include-base-44", "Polish"), "test", "test"),
+    ("opendecisions", "jgeuter/OpenDecisions", "test", "test"),
 ]
 
 
@@ -55,8 +59,9 @@ def main() -> int:
 
     raw: list[tuple[str, str, str | None, list[dict]]] = []
     for name, hf_id, hf_split, split in PLAN:
-        print(f"loading {hf_id} [{hf_split}] ...")
-        raw.append((name, hf_split, split, list(load_dataset(hf_id, split=hf_split))))
+        hf_id, config = hf_id if isinstance(hf_id, tuple) else (hf_id, None)
+        print(f"loading {hf_id} {config or ''} [{hf_split}] ...")
+        raw.append((name, hf_split, split, list(load_dataset(hf_id, config, split=hf_split))))
 
     # Every text of every test row, per pool.
     test_texts: dict[str, set[str]] = defaultdict(set)

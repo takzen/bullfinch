@@ -12,6 +12,7 @@ corpus as a whole covers all of them and the model cannot lean on one wording or
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
@@ -184,6 +185,70 @@ def from_psc(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
     )
 
 
+# ------------------------------------------------- evaluation-only sets (never trained on)
+
+INCLUDE_INSTRUCTIONS = "Która odpowiedź na to pytanie jest poprawna?"
+
+
+def from_belebele(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """facebook/belebele pol_Latn: reading comprehension, 4 options; the item's own question."""
+
+    passage, q, gold = row.get("flores_passage"), row.get("question"), str(row.get("correct_answer_num"))
+    options = {str(i): row.get(f"mc_answer{i}") for i in range(1, 5)}
+    if not (_ok(passage) and _ok(q) and all(map(_ok, options.values()))) or gold not in options:
+        return
+    yield DecisionExample(
+        id=f"belebele-{split}-{idx:04d}", state=passage.strip(),
+        question=TypedQuestion("choice", q.strip(), {k: v.strip() for k, v in options.items()}),
+        answer=gold, family="belebele", language="pl", source="facebook/belebele",
+        group=f"belebele:{text_key(passage)}", meta={"label": gold},
+    )
+
+
+def from_include(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """CohereLabs/include-base-44 Polish: regional exam questions, 4 options."""
+
+    q, gold = row.get("question"), str(row.get("answer"))
+    options = {k: row.get(f"option_{k}") for k in "abcd"}
+    key = "abcd"[int(gold)] if gold in "0123" else None
+    if not (_ok(q) and all(map(_ok, options.values()))) or key is None:
+        return
+    yield DecisionExample(
+        id=f"include-{split}-{idx:04d}", state=q.strip(),
+        question=TypedQuestion("choice", INCLUDE_INSTRUCTIONS, {k: v.strip() for k, v in options.items()}),
+        answer=key, family="include", language="pl", source="CohereLabs/include-base-44",
+        group=f"include:{text_key(q)}", meta={"label": key, "subject": str(row.get("subject"))},
+    )
+
+
+def from_opendecisions(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """jgeuter/OpenDecisions, Polish items only. Its score questions list N levels, which
+    decision-v1 cannot express, so they are scored as a choice of level ("0".."N-1")."""
+
+    if row.get("language") != "pl":
+        return
+    q, expected, state = row.get("question") or {}, row.get("expected"), row.get("state")
+    if not isinstance(state, str):
+        state = json.dumps(state, ensure_ascii=False, indent=1)
+    qtype, criteria = q.get("type"), q.get("criteria")
+    if qtype == "noul" and isinstance(criteria, dict) and expected in ("yes", "no"):
+        question = TypedQuestion("noul", q["instructions"], {"true": criteria.get("true", "tak"),
+                                                             "false": criteria.get("false", "nie")})
+        answer = "true" if expected == "yes" else "false"
+    elif qtype == "choice" and isinstance(criteria, dict) and str(expected) in criteria:
+        question, answer = TypedQuestion("choice", q["instructions"], dict(criteria)), str(expected)
+    elif qtype == "score" and isinstance(criteria, list) and 0 <= int(expected) < len(criteria):
+        question = TypedQuestion("choice", q["instructions"], {str(i): c for i, c in enumerate(criteria)})
+        answer = str(int(expected))
+    else:
+        return
+    yield DecisionExample(
+        id=f"opendecisions-{row['id']}", state=state.strip(), question=question, answer=answer,
+        family="opendecisions", language="pl", source="jgeuter/OpenDecisions",
+        group=f"opendecisions:{row['id']}", meta={"label": answer, "type": str(qtype), "tier": str(row.get("tier"))},
+    )
+
+
 @dataclass(frozen=True)
 class Source:
     convert: Callable[[dict, int, str], Iterable[DecisionExample]]
@@ -196,4 +261,7 @@ SOURCES = {
     "polemo_out": Source(from_polemo_out, ("sentence",), "polemo"),
     "dyk": Source(from_dyk, ("question", "answer"), "dyk"),
     "psc": Source(from_psc, ("extract_text", "summary_text"), "psc"),
+    "belebele": Source(from_belebele, ("flores_passage",), "belebele"),
+    "include": Source(from_include, ("question",), "include"),
+    "opendecisions": Source(from_opendecisions, (), "opendecisions"),
 }

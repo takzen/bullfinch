@@ -26,3 +26,22 @@ def test_dyk_and_psc_turn_labels_into_noul_answers() -> None:
     (ex,) = from_psc({"extract_text": "A.", "summary_text": "B.", "label": 1}, 0, "test")
     assert ex.answer == "true" and "Streszczenie A: A." in ex.state
     assert list(from_psc({"extract_text": "A.", "summary_text": "", "label": 1}, 0, "test")) == []
+
+
+def test_eval_only_converters() -> None:
+    from bullfinch.sources import from_belebele, from_include, from_opendecisions
+
+    row = {"flores_passage": "Tekst.", "question": "Co?", "correct_answer_num": "3",
+           **{f"mc_answer{i}": f"o{i}" for i in range(1, 5)}}
+    (b,) = from_belebele(row, 0, "test")
+    assert b.answer == "3" and b.question.criteria["3"] == "o3"
+    (inc,) = from_include({"question": "Pytanie?", "answer": 2, **{f"option_{k}": k for k in "abcd"}}, 0, "test")
+    assert inc.answer == "c"
+    base = {"id": "x", "language": "pl", "state": {"a": "żółw"}}
+    (noul,) = from_opendecisions({**base, "expected": "yes", "question": {
+        "type": "noul", "instructions": "Czy?", "criteria": {"true": "t", "false": "f"}}}, 0, "test")
+    assert noul.answer == "true" and "żółw" in noul.state
+    (score,) = from_opendecisions({**base, "expected": 1, "question": {
+        "type": "score", "instructions": "Oceń.", "criteria": ["niski", "średni", "wysoki"]}}, 0, "test")
+    assert score.question.type == "choice" and score.answer == "1"
+    assert list(from_opendecisions({**base, "language": "en"}, 0, "test")) == []
