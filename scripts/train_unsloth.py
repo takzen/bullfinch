@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import random
 import sys
 from pathlib import Path
@@ -69,7 +70,8 @@ def main() -> int:
         model=model, processing_class=tokenizer, train_dataset=train_items, eval_dataset=dev_items,
         callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         args=TrainingArguments(
-            per_device_train_batch_size=2, gradient_accumulation_steps=8, warmup_ratio=0.03, num_train_epochs=1,
+            per_device_train_batch_size=2, gradient_accumulation_steps=8, num_train_epochs=1,
+            warmup_steps=max(1, round(0.03 * math.ceil(len(train_items) / 16))),  # no warmup_ratio in transformers 5
             learning_rate=args.lr, lr_scheduler_type="cosine", weight_decay=0.01,
             bf16=is_bfloat16_supported(), fp16=not is_bfloat16_supported(),
             eval_strategy="steps", eval_steps=args.eval_every, save_strategy="steps", save_steps=args.eval_every,
