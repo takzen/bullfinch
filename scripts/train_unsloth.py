@@ -38,7 +38,8 @@ def main() -> int:
     ap.add_argument("--mix", required=True)
     ap.add_argument("--max-tokens", type=int, default=2048)
     ap.add_argument("--dev-n", type=int, default=300)
-    ap.add_argument("--eval-every", type=int, default=40)
+    ap.add_argument("--eval-every", type=int, default=100)
+    ap.add_argument("--eval-batch", type=int, default=1, help="padding a batch of long dev rows is what makes evals slow")
     ap.add_argument("--patience", type=int, default=4)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--seed", type=int, default=7)
@@ -71,6 +72,7 @@ def main() -> int:
         callbacks=[EarlyStoppingCallback(early_stopping_patience=args.patience)],
         args=TrainingArguments(
             per_device_train_batch_size=2, gradient_accumulation_steps=8, num_train_epochs=1,
+            per_device_eval_batch_size=args.eval_batch,
             warmup_steps=max(1, round(0.03 * math.ceil(len(train_items) / 16))),  # no warmup_ratio in transformers 5
             learning_rate=args.lr, lr_scheduler_type="cosine", weight_decay=0.01,
             bf16=is_bfloat16_supported(), fp16=not is_bfloat16_supported(),
