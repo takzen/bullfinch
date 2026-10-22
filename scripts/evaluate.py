@@ -48,6 +48,7 @@ def main() -> int:
     ap.add_argument("--revision", help="pinned revision of --base")
     ap.add_argument("--ollama", help="score this Ollama model instead of the local engine")
     ap.add_argument("--url", help="score a /v1/systemone server instead of the local engine")
+    ap.add_argument("--unsloth", help="score a saved Unsloth FastDecisionModel directory instead")
     ap.add_argument("--key-env", help="env var with the --url server's API key")
     ap.add_argument("--model", help="model name to send to the --url server")
     ap.add_argument("--calibration", type=Path)
@@ -73,6 +74,10 @@ def main() -> int:
 
         engine = SystemOneEngine(args.url, key=os.environ.get(args.key_env) if args.key_env else None,
                                  model=args.model)
+    elif args.unsloth:
+        from bullfinch.unsloth_head import UnslothEngine
+
+        engine = UnslothEngine(args.unsloth, max_length=args.max_tokens)
     elif args.ollama:
         from bullfinch.ollama import OllamaEngine
 
