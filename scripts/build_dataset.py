@@ -26,7 +26,12 @@ from pathlib import Path
 from bullfinch.sources import SOURCES, text_key
 from bullfinch.splits import split_for
 
-# (source, hf dataset id or (id, config), hf split, our split or None to split train rows by group)
+MASSIVE = {"path": "parquet", "data_files": {
+    s: f"hf://datasets/AmazonScience/massive@refs%2Fconvert%2Fparquet/pl-PL/{s}/0000.parquet"
+    for s in ("train", "validation", "test")}}  # the repo itself is a loading script
+
+# (source, hf id / (id, config) / load_dataset kwargs, hf split, our split or None to split
+# train rows by group)
 PLAN = [
     ("polemo_in", "allegro/klej-polemo2-in", "train", None),
     ("polemo_in", "allegro/klej-polemo2-in", "validation", "dev"),
@@ -36,6 +41,9 @@ PLAN = [
     ("dyk", "allegro/klej-dyk", "test", "test"),
     ("psc", "allegro/klej-psc", "train", None),
     ("psc", "allegro/klej-psc", "test", "test"),
+    ("massive", MASSIVE, "train", None),
+    ("massive", MASSIVE, "validation", "dev"),
+    ("massive", MASSIVE, "test", "test"),
     # evaluation only
     ("belebele", ("facebook/belebele", "pol_Latn"), "test", "test"),
     ("include", ("CohereLabs/include-base-44", "Polish"), "test", "test"),
@@ -58,10 +66,17 @@ def main() -> int:
         raise SystemExit("needs the data extra: `uv sync --extra data`") from exc
 
     raw: list[tuple[str, str, str | None, list[dict]]] = []
-    for name, hf_id, hf_split, split in PLAN:
-        hf_id, config = hf_id if isinstance(hf_id, tuple) else (hf_id, None)
-        print(f"loading {hf_id} {config or ''} [{hf_split}] ...")
-        raw.append((name, hf_split, split, list(load_dataset(hf_id, config, split=hf_split))))
+    for name, spec, hf_split, split in PLAN:
+        if isinstance(spec, dict):
+            kwargs = spec
+        else:
+            hf_id, config = spec if isinstance(spec, tuple) else (spec, None)
+            kwargs = {"path": hf_id, "name": config}
+        print(f"loading {name} [{hf_split}] ...")
+        ds = load_dataset(**kwargs, split=hf_split)
+        labels = {c: f for c, f in ds.features.items() if hasattr(f, "int2str")}
+        rows = [{**r, **{f"{c}_name": f.int2str(r[c]) for c, f in labels.items()}} for r in ds]
+        raw.append((name, hf_split, split, rows))
 
     # Every text of every test row, per pool.
     test_texts: dict[str, set[str]] = defaultdict(set)

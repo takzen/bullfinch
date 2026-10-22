@@ -32,10 +32,9 @@ in PSC 3,023 of the 4,302 training pairs reuse a summary from the test split, so
 | [allegro/klej-psc](https://huggingface.co/datasets/allegro/klej-psc) | do two summaries describe the same article, yes/no | 4,302 / – / 1,078 | CC BY-SA 3.0 |
 | [ipipan/polqa](https://huggingface.co/datasets/ipipan/polqa) | is the passage evidence for the question, yes/no | 7,000 questions, 87,525 labelled passages | CC BY-SA 4.0 |
 | [NASK-PIB/PLLuM-Align](https://huggingface.co/datasets/NASK-PIB/PLLuM-Align) | which of two answers is better; human ratings as scores | to count | CC BY-SA 4.0 |
-| [AmazonScience/massive](https://huggingface.co/datasets/AmazonScience/massive) pl-PL | user intent, 60 options | 11,514 / 2,033 / 2,974 | CC BY 4.0 |
+| [AmazonScience/massive](https://huggingface.co/datasets/AmazonScience/massive) pl-PL | voice-assistant scenario (18 options), then the intent within it (2–9 options) | 11,514 / 2,033 / 2,974 | CC BY 4.0 |
 | [utahnlp/x-fact](https://huggingface.co/datasets/utahnlp/x-fact) pl | claim veracity, 7 levels | 1,325 / 176 / 267 | MIT |
 | [mhardalov/exams](https://huggingface.co/datasets/mhardalov/exams) pl | school exam questions, multiple choice | 1,577 / 394 / – | CC BY-SA 4.0 |
-| [Davlan/sib200](https://huggingface.co/datasets/Davlan/sib200) pol_Latn | topic, 7 options | 701 / 99 / 204 | CC BY-SA 4.0 |
 
 Licence still to confirm before use: [allegro/klej-cbd](https://huggingface.co/datasets/allegro/klej-cbd)
 (cyberbullying, yes/no, 10,041 / 1,000),
@@ -52,7 +51,9 @@ comprehension questions, CC BY-SA 4.0),
 [jgeuter/OpenDecisions](https://huggingface.co/datasets/jgeuter/OpenDecisions) (2,352 Jev-style
 decisions; its card asks not to train on it) and the official test split of every set above.
 
-**Left out:** CDSC-E and CDSC-R, `sdadas/8tags` and `sdadas/ppc` (non-commercial licences), and
+**Left out:** [Davlan/sib200](https://huggingface.co/datasets/Davlan/sib200), because its sentences
+come from FLORES-200 and 635 of its 701 Polish training sentences appear word for word in the
+Belebele passages we evaluate on; CDSC-E and CDSC-R, `sdadas/8tags` and `sdadas/ppc` (non-commercial licences), and
 `decisionmodels/sn92-generalist-train-v1`, whose text and labels were written by commercial models.
 Bullfinch is never trained on the outputs of commercial models or decision APIs.
 

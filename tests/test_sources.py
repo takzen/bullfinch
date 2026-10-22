@@ -45,3 +45,17 @@ def test_eval_only_converters() -> None:
         "type": "score", "instructions": "Oceń.", "criteria": ["niski", "średni", "wysoki"]}}, 0, "test")
     assert score.question.type == "choice" and score.answer == "1"
     assert list(from_opendecisions({**base, "language": "en"}, 0, "test")) == []
+
+
+def test_massive_asks_scenario_then_intent_within_it() -> None:
+    from bullfinch.sources import INTENTS, SCENARIOS, from_massive
+
+    assert all(k.split("_")[0] in SCENARIOS for k in INTENTS) and len(INTENTS) == 60
+    out = list(from_massive({"id": "7", "utt": "obudź mnie o siódmej", "scenario_name": "alarm",
+                             "intent_name": "alarm_set"}, 0, "train"))
+    assert [e.family for e in out] == ["massive:scenario", "massive:intent"]
+    assert out[1].question.option_keys() == ["alarm_query", "alarm_remove", "alarm_set"]
+    assert out[0].group == out[1].group == "massive:7"
+    only = list(from_massive({"id": "8", "utt": "jaka pogoda", "scenario_name": "weather",
+                              "intent_name": "weather_query"}, 1, "test"))
+    assert [e.family for e in only] == ["massive:scenario"]

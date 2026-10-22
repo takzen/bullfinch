@@ -185,6 +185,107 @@ def from_psc(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
     )
 
 
+SCENARIOS = {
+    "alarm": "budzik: ustawianie, sprawdzanie, usuwanie alarmów",
+    "audio": "głośność: głośniej, ciszej, wyciszenie",
+    "calendar": "kalendarz: wydarzenia, spotkania, przypomnienia",
+    "cooking": "gotowanie: przepisy i pytania kulinarne",
+    "datetime": "data i czas: która godzina, jaki dzień, strefy czasowe",
+    "email": "poczta e-mail i kontakty",
+    "general": "rozmowa ogólna: powitania, żarty, luźne pytania",
+    "iot": "inteligentny dom: światła, gniazdka, odkurzacz, ekspres do kawy",
+    "lists": "listy: tworzenie, dodawanie, usuwanie, sprawdzanie",
+    "music": "preferencje i informacje o muzyce: co gra, lubię / nie lubię, tryb odtwarzania",
+    "news": "wiadomości i serwisy informacyjne",
+    "play": "włączenie odtwarzania: muzyka, radio, podcast, audiobook, gra",
+    "qa": "pytania o wiedzę: fakty, definicje, obliczenia, kursy walut, giełda",
+    "recommendation": "polecenia: filmy, miejsca, wydarzenia",
+    "social": "media społecznościowe: posty, sprawdzanie, skargi do firm",
+    "takeaway": "jedzenie na wynos: zamówienia i pytania do lokali",
+    "transport": "transport: bilety, połączenia, taksówki, korki",
+    "weather": "pogoda",
+}
+
+INTENTS = {
+    "alarm_query": "sprawdzenie ustawionych alarmów", "alarm_remove": "usunięcie alarmu",
+    "alarm_set": "ustawienie alarmu lub budzika",
+    "audio_volume_down": "ściszenie", "audio_volume_mute": "wyciszenie",
+    "audio_volume_other": "inna zmiana ustawień dźwięku", "audio_volume_up": "pogłośnienie",
+    "calendar_query": "sprawdzenie kalendarza", "calendar_remove": "usunięcie wydarzenia z kalendarza",
+    "calendar_set": "dodanie wydarzenia lub przypomnienia",
+    "cooking_query": "pytanie kulinarne, np. jak długo gotować", "cooking_recipe": "prośba o przepis",
+    "datetime_convert": "przeliczenie czasu między strefami", "datetime_query": "pytanie o datę lub godzinę",
+    "email_addcontact": "dodanie kontaktu", "email_query": "sprawdzenie poczty",
+    "email_querycontact": "pytanie o dane kontaktu", "email_sendemail": "wysłanie e-maila",
+    "general_greet": "powitanie, grzecznościowa pogawędka", "general_joke": "prośba o żart",
+    "general_quirky": "dziwne lub luźne pytanie spoza innych kategorii",
+    "iot_cleaning": "uruchomienie odkurzacza lub sprzątania", "iot_coffee": "zrobienie kawy",
+    "iot_hue_lightchange": "zmiana koloru światła", "iot_hue_lightdim": "przyciemnienie światła",
+    "iot_hue_lightoff": "wyłączenie światła", "iot_hue_lighton": "włączenie światła",
+    "iot_hue_lightup": "rozjaśnienie światła", "iot_wemo_off": "wyłączenie gniazdka lub urządzenia",
+    "iot_wemo_on": "włączenie gniazdka lub urządzenia",
+    "lists_createoradd": "utworzenie listy lub dodanie pozycji", "lists_query": "sprawdzenie listy",
+    "lists_remove": "usunięcie listy lub pozycji",
+    "music_dislikeness": "utwór się nie podoba", "music_likeness": "utwór się podoba, zapamiętaj gust",
+    "music_query": "pytanie o grany utwór lub wykonawcę", "music_settings": "tryb odtwarzania: losowo, powtarzanie",
+    "news_query": "pytanie o wiadomości",
+    "play_audiobook": "włączenie audiobooka", "play_game": "włączenie gry", "play_music": "włączenie muzyki",
+    "play_podcasts": "włączenie podcastu", "play_radio": "włączenie radia",
+    "qa_currency": "kurs walut", "qa_definition": "definicja słowa lub pojęcia", "qa_factoid": "pytanie o fakt",
+    "qa_maths": "obliczenie matematyczne", "qa_stock": "notowania giełdowe",
+    "recommendation_events": "polecenie wydarzeń", "recommendation_locations": "polecenie miejsc, np. restauracji",
+    "recommendation_movies": "polecenie filmów",
+    "social_post": "publikacja posta lub skarga do firmy w mediach", "social_query": "sprawdzenie mediów społecznościowych",
+    "takeaway_order": "złożenie zamówienia na wynos", "takeaway_query": "pytanie o zamówienie lub ofertę lokalu",
+    "transport_query": "pytanie o połączenie lub rozkład", "transport_taxi": "zamówienie taksówki",
+    "transport_ticket": "rezerwacja biletu", "transport_traffic": "informacja o korkach",
+    "weather_query": "pytanie o pogodę",
+}
+
+SCENARIO_INSTRUCTIONS = [
+    "Do jakiego obszaru należy to polecenie dla asystenta głosowego?",
+    "Której usługi asystenta dotyczy ta wypowiedź użytkownika?",
+    "Przypisz polecenie do właściwej kategorii.",
+    "Który moduł asystenta powinien obsłużyć tę prośbę?",
+    "Which assistant domain does this Polish voice command belong to?",
+]
+
+INTENT_INSTRUCTIONS = [
+    "Czego dokładnie chce użytkownik?",
+    "Jaką intencję ma to polecenie?",
+    "Którą akcję asystent powinien wykonać?",
+    "Rozpoznaj intencję użytkownika w tej wypowiedzi.",
+    "What exactly does the user want the assistant to do?",
+]
+
+
+def _pick_text(options: list[str], row_id: str) -> str:
+    return options[hashlib.sha256(row_id.encode()).digest()[0] % len(options)]
+
+
+def from_massive(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """AmazonScience/massive pl-PL: voice-assistant scenario (18 options), then the intent
+    among that scenario's intents (60 do not fit the 26 option letters)."""
+
+    utt, scenario, intent = row.get("utt"), row.get("scenario_name"), row.get("intent_name")
+    if not _ok(utt) or scenario not in SCENARIOS or intent not in INTENTS:
+        return
+    rid = f"massive-{split}-{idx:05d}"
+    base = dict(state=f"Polecenie: {utt.strip()}", language="pl", source="AmazonScience/massive",
+                group=f"massive:{row.get('id') or text_key(utt)}")
+    yield DecisionExample(
+        id=f"{rid}-scenario", question=TypedQuestion("choice", _pick_text(SCENARIO_INSTRUCTIONS, rid), dict(SCENARIOS)),
+        answer=scenario, family="massive:scenario", meta={"label": scenario}, **base,
+    )
+    siblings = sorted(k for k in INTENTS if k.startswith(scenario + "_"))
+    if len(siblings) >= 2:
+        yield DecisionExample(
+            id=f"{rid}-intent", question=TypedQuestion("choice", _pick_text(INTENT_INSTRUCTIONS, rid),
+                                                       {k: INTENTS[k] for k in siblings}),
+            answer=intent, family="massive:intent", meta={"label": intent}, **base,
+        )
+
+
 # ------------------------------------------------- evaluation-only sets (never trained on)
 
 INCLUDE_INSTRUCTIONS = "Która odpowiedź na to pytanie jest poprawna?"
@@ -261,6 +362,7 @@ SOURCES = {
     "polemo_out": Source(from_polemo_out, ("sentence",), "polemo"),
     "dyk": Source(from_dyk, ("question", "answer"), "dyk"),
     "psc": Source(from_psc, ("extract_text", "summary_text"), "psc"),
+    "massive": Source(from_massive, ("utt",), "massive"),
     "belebele": Source(from_belebele, ("flores_passage",), "belebele"),
     "include": Source(from_include, ("question",), "include"),
     "opendecisions": Source(from_opendecisions, (), "opendecisions"),
