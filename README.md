@@ -64,7 +64,7 @@ Bullfinch is never trained on the outputs of commercial models or decision APIs.
 
 1. Converters: every set into the decision-example format Serin uses (template `decision-v1`),
    with several Polish phrasings of each question.
-2. Baselines on the test splits: Qwen3.5-4B before training, Bielik, Serin 4B.
+2. Baselines on the test splits: Qwen3.5-4B before training and Serin 4B.
 3. QLoRA pilot, then error analysis before adding data.
 4. Results on every test split, Belebele, INCLUDE and the Polish items of OpenDecisions.
 5. Publish as `Takzen/bullfinch-4b`; the licence of the weights is decided once the data list is
