@@ -22,7 +22,9 @@ data, which is where Serin hit its ceiling.
 
 Only sets with human or source labels and a licence that allows an open model. Official test
 splits are never trained on, and neither is any training row that shares a text with a test row:
-in PSC 3,023 of the 4,302 training pairs reuse a summary from the test split, so they are dropped.
+in PSC 3,023 of the 4,302 training pairs reuse a summary from the test split, and 404 of the 1,577
+Polish EXAMS training questions are INCLUDE test questions, so they are dropped. The check ignores
+case and punctuation and runs across sets that share a source.
 
 | Set | Decision | Train / val / test | Licence |
 |---|---|---|---|

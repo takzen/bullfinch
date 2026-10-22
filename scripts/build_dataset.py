@@ -23,12 +23,15 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from bullfinch.sources import SOURCES, text_key
+from bullfinch.sources import SOURCES, overlap_key
 from bullfinch.splits import split_for
 
 MASSIVE = {"path": "parquet", "data_files": {
     s: f"hf://datasets/AmazonScience/massive@refs%2Fconvert%2Fparquet/pl-PL/{s}/0000.parquet"
     for s in ("train", "validation", "test")}}  # the repo itself is a loading script
+POLQA = {"path": "parquet", "data_files": {
+    s: f"hf://datasets/ipipan/polqa@refs%2Fconvert%2Fparquet/pairs/{s}/0000.parquet"
+    for s in ("train", "validation", "test")}}
 
 # (source, hf id / (id, config) / load_dataset kwargs, hf split, our split or None to split
 # train rows by group)
@@ -44,6 +47,11 @@ PLAN = [
     ("massive", MASSIVE, "train", None),
     ("massive", MASSIVE, "validation", "dev"),
     ("massive", MASSIVE, "test", "test"),
+    ("polqa", POLQA, "train", None),
+    ("polqa", POLQA, "validation", "dev"),
+    ("polqa", POLQA, "test", "test"),
+    ("exams", ("mhardalov/exams", "crosslingual_pl"), "train", None),
+    ("exams", ("mhardalov/exams", "crosslingual_pl"), "validation", "dev"),
     # evaluation only
     ("belebele", ("facebook/belebele", "pol_Latn"), "test", "test"),
     ("include", ("CohereLabs/include-base-44", "Polish"), "test", "test"),
@@ -83,7 +91,7 @@ def main() -> int:
     for name, _, split, rows in raw:
         if split == "test":
             src = SOURCES[name]
-            test_texts[src.pool].update(text_key(r[f]) for r in rows for f in src.texts if r.get(f))
+            test_texts[src.pool].update(overlap_key(x) for r in rows for x in src.texts(r))
 
     args.out.mkdir(parents=True, exist_ok=True)
     out_rows: dict[str, list[dict]] = defaultdict(list)
@@ -91,7 +99,7 @@ def main() -> int:
     for name, hf_split, split, rows in raw:
         src = SOURCES[name]
         for idx, row in enumerate(rows):
-            if split != "test" and any(text_key(row[f]) in test_texts[src.pool] for f in src.texts if row.get(f)):
+            if split != "test" and any(overlap_key(x) in test_texts[src.pool] for x in src.texts(row)):
                 dropped[f"{name}:{hf_split}"] += 1
                 continue
             for ex in src.convert(row, idx, hf_split):

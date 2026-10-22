@@ -59,3 +59,18 @@ def test_massive_asks_scenario_then_intent_within_it() -> None:
     only = list(from_massive({"id": "8", "utt": "jaka pogoda", "scenario_name": "weather",
                               "intent_name": "weather_query"}, 1, "test"))
     assert [e.family for e in only] == ["massive:scenario"]
+
+
+def test_polqa_and_exams() -> None:
+    from bullfinch.sources import SOURCES, from_exams, from_polqa, overlap_key
+
+    (p,) = from_polqa({"question_id": 3, "question": "Kto?", "passage_title": "Alfa", "passage_text": "Tekst.",
+                       "relevant": True}, 0, "train")
+    assert p.answer == "true" and p.state.endswith("Fragment (Alfa): Tekst.") and p.group == "polqa:3"
+    row = {"id": "e1", "answerKey": "B", "question": {"stem": "Ile?", "choices": {
+        "label": ["A", "B", "C", "D"], "text": ["1", "2", "3", "4"]}}}
+    (e,) = from_exams(row, 0, "train")
+    assert e.answer == "b" and e.question.criteria["b"] == "2"
+    assert SOURCES["exams"].pool == SOURCES["include"].pool
+    assert SOURCES["exams"].texts(row) == ["Ile?"]
+    assert overlap_key("Ile, to jest?") == overlap_key("ile to  jest")

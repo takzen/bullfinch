@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 
@@ -119,6 +120,12 @@ def _pick(options: list[Phrasing], row_id: str) -> Phrasing:
 
 def text_key(text: str) -> str:
     return hashlib.sha256(" ".join(text.split()).lower().encode()).hexdigest()[:16]
+
+
+def overlap_key(text: str) -> str:
+    """Looser than text_key: case, spacing and punctuation do not hide a repeated text."""
+
+    return hashlib.sha256(re.sub(r"\W+", " ", text.lower()).strip().encode()).hexdigest()[:16]
 
 
 def _ok(text: object) -> bool:
@@ -286,6 +293,51 @@ def from_massive(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
         )
 
 
+def from_polqa(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """ipipan/polqa pairs: is a Wikipedia passage relevant to (answers) the question."""
+
+    q, passage, relevant = row.get("question"), row.get("passage_text"), row.get("relevant")
+    if not (_ok(q) and _ok(passage)) or relevant not in (True, False):
+        return
+    rid = f"polqa-{split}-{idx:05d}"
+    p = _pick(ANSWERS_QUESTION, rid)
+    title = (row.get("passage_title") or "").strip()
+    head = f"Fragment ({title})" if title else "Fragment"
+    yield DecisionExample(
+        id=rid, state=f"Pytanie użytkownika: {q.strip()}\n\n{head}: {passage.strip()}",
+        question=p.question(), answer=p.key("true" if relevant else "false"), family="polqa",
+        language="pl", source="ipipan/polqa", group=f"polqa:{row.get('question_id')}",
+        meta={"label": "true" if relevant else "false", "passage_source": str(row.get("passage_source"))},
+    )
+
+
+EXAMS_INSTRUCTIONS = [
+    "Która odpowiedź jest poprawna?",
+    "Wybierz poprawne dokończenie lub odpowiedź.",
+    "Które z poniższych jest prawidłowe?",
+    "Wskaż właściwą odpowiedź na pytanie egzaminacyjne.",
+    "Which answer is correct?",
+]
+
+
+def from_exams(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """mhardalov/exams crosslingual_pl: Polish vocational exam questions, 4 options."""
+
+    q = row.get("question") or {}
+    stem, choices, gold = q.get("stem"), q.get("choices") or {}, row.get("answerKey")
+    labels, texts = choices.get("label") or [], choices.get("text") or []
+    if not _ok(stem) or gold not in labels or len(labels) != len(texts) or not all(map(_ok, texts)):
+        return
+    rid = f"exams-{split}-{idx:05d}"
+    yield DecisionExample(
+        id=rid, state=stem.strip(),
+        question=TypedQuestion("choice", _pick_text(EXAMS_INSTRUCTIONS, rid),
+                               {k.lower(): v.strip() for k, v in zip(labels, texts)}),
+        answer=gold.lower(), family="exams", language="pl", source="mhardalov/exams",
+        group=f"exams:{row.get('id') or text_key(stem)}", meta={"label": gold.lower()},
+    )
+
+
 # ------------------------------------------------- evaluation-only sets (never trained on)
 
 INCLUDE_INSTRUCTIONS = "Która odpowiedź na to pytanie jest poprawna?"
@@ -353,17 +405,23 @@ def from_opendecisions(row: dict, idx: int, split: str) -> Iterable[DecisionExam
 @dataclass(frozen=True)
 class Source:
     convert: Callable[[dict, int, str], Iterable[DecisionExample]]
-    texts: tuple[str, ...]  # raw fields checked for overlap with test rows
-    pool: str               # sources in one pool are checked against each other's test rows
+    texts: Callable[[dict], list[str]]  # raw texts checked for overlap with test rows
+    pool: str  # sources in one pool are checked against each other's test rows
+
+
+def fields(*names: str) -> Callable[[dict], list[str]]:
+    return lambda row: [row[n] for n in names if _ok(row.get(n))]
 
 
 SOURCES = {
-    "polemo_in": Source(from_polemo_in, ("sentence",), "polemo"),
-    "polemo_out": Source(from_polemo_out, ("sentence",), "polemo"),
-    "dyk": Source(from_dyk, ("question", "answer"), "dyk"),
-    "psc": Source(from_psc, ("extract_text", "summary_text"), "psc"),
-    "massive": Source(from_massive, ("utt",), "massive"),
-    "belebele": Source(from_belebele, ("flores_passage",), "belebele"),
-    "include": Source(from_include, ("question",), "include"),
-    "opendecisions": Source(from_opendecisions, (), "opendecisions"),
+    "polemo_in": Source(from_polemo_in, fields("sentence"), "polemo"),
+    "polemo_out": Source(from_polemo_out, fields("sentence"), "polemo"),
+    "dyk": Source(from_dyk, fields("question", "answer"), "dyk"),
+    "psc": Source(from_psc, fields("extract_text", "summary_text"), "psc"),
+    "massive": Source(from_massive, fields("utt"), "massive"),
+    "polqa": Source(from_polqa, fields("question", "passage_text"), "polqa"),
+    "exams": Source(from_exams, lambda r: [r["question"]["stem"]], "exams"),
+    "belebele": Source(from_belebele, fields("flores_passage"), "belebele"),
+    "include": Source(from_include, fields("question"), "exams"),  # EXAMS pl repeats INCLUDE items
+    "opendecisions": Source(from_opendecisions, fields(), "opendecisions"),
 }
