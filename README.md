@@ -32,11 +32,10 @@ case and punctuation and runs across sets that share a source.
 | [allegro/klej-polemo2-out](https://huggingface.co/datasets/allegro/klej-polemo2-out) | the same, other domains (test only) | – / 494 / 494 | CC BY-SA 4.0 |
 | [allegro/klej-dyk](https://huggingface.co/datasets/allegro/klej-dyk) | does the answer answer the question, yes/no | 4,154 / – / 1,029 | CC BY-SA 3.0 |
 | [allegro/klej-psc](https://huggingface.co/datasets/allegro/klej-psc) | do two summaries describe the same article, yes/no | 4,302 / – / 1,078 | CC BY-SA 3.0 |
-| [ipipan/polqa](https://huggingface.co/datasets/ipipan/polqa) | is the passage evidence for the question, yes/no | 7,000 questions, 87,525 labelled passages | CC BY-SA 4.0 |
-| [NASK-PIB/PLLuM-Align](https://huggingface.co/datasets/NASK-PIB/PLLuM-Align) | which of two answers is better; human ratings as scores | to count | CC BY-SA 4.0 |
+| [ipipan/polqa](https://huggingface.co/datasets/ipipan/polqa) | is the passage evidence for the question, yes/no | 66,770 / 13,681 / 13,729 labelled pairs | CC BY-SA 4.0 |
+| [NASK-PIB/PLLuM-Align](https://huggingface.co/datasets/NASK-PIB/PLLuM-Align) | which of two replies people preferred; human 1–5 ratings of correctness and helpfulness (replies from open models only) | 4,300 pairs, 1,834 ratings | CC BY-SA 4.0 |
 | [AmazonScience/massive](https://huggingface.co/datasets/AmazonScience/massive) pl-PL | voice-assistant scenario (18 options), then the intent within it (2–9 options) | 11,514 / 2,033 / 2,974 | CC BY 4.0 |
-| [utahnlp/x-fact](https://huggingface.co/datasets/utahnlp/x-fact) pl | claim veracity, 7 levels | 1,325 / 176 / 267 | MIT |
-| [mhardalov/exams](https://huggingface.co/datasets/mhardalov/exams) pl | school exam questions, multiple choice | 1,577 / 394 / – | CC BY-SA 4.0 |
+| [mhardalov/exams](https://huggingface.co/datasets/mhardalov/exams) pl | vocational exam questions, multiple choice | 1,577 / 394 / – | CC BY-SA 4.0 |
 
 Licence still to confirm before use: [allegro/klej-cbd](https://huggingface.co/datasets/allegro/klej-cbd)
 (cyberbullying, yes/no, 10,041 / 1,000),
@@ -53,7 +52,9 @@ comprehension questions, CC BY-SA 4.0),
 [jgeuter/OpenDecisions](https://huggingface.co/datasets/jgeuter/OpenDecisions) (2,352 Jev-style
 decisions; its card asks not to train on it) and the official test split of every set above.
 
-**Left out:** [Davlan/sib200](https://huggingface.co/datasets/Davlan/sib200), because its sentences
+**Left out:** [utahnlp/x-fact](https://huggingface.co/datasets/utahnlp/x-fact), because its evidence
+snippets are search results that often quote the fact-checker's verdict, so the label leaks into the
+input; [Davlan/sib200](https://huggingface.co/datasets/Davlan/sib200), because its sentences
 come from FLORES-200 and 635 of its 701 Polish training sentences appear word for word in the
 Belebele passages we evaluate on; CDSC-E and CDSC-R, `sdadas/8tags` and `sdadas/ppc` (non-commercial licences), and
 `decisionmodels/sn92-generalist-train-v1`, whose text and labels were written by commercial models.

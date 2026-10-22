@@ -52,6 +52,8 @@ PLAN = [
     ("polqa", POLQA, "test", "test"),
     ("exams", ("mhardalov/exams", "crosslingual_pl"), "train", None),
     ("exams", ("mhardalov/exams", "crosslingual_pl"), "validation", "dev"),
+    *(("pllum", {"path": "json", "data_files": f"hf://datasets/NASK-PIB/PLLuM-Align/{f}.jsonl"}, "train", None)
+      for f in ("ranking", "rating", "dialogs")),  # one schema per file
     # evaluation only
     ("belebele", ("facebook/belebele", "pol_Latn"), "test", "test"),
     ("include", ("CohereLabs/include-base-44", "Polish"), "test", "test"),

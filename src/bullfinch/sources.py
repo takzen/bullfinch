@@ -266,7 +266,7 @@ INTENT_INSTRUCTIONS = [
 ]
 
 
-def _pick_text(options: list[str], row_id: str) -> str:
+def _pick_text(options: list, row_id: str):
     return options[hashlib.sha256(row_id.encode()).digest()[0] % len(options)]
 
 
@@ -309,6 +309,89 @@ def from_polqa(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
         language="pl", source="ipipan/polqa", group=f"polqa:{row.get('question_id')}",
         meta={"label": "true" if relevant else "false", "passage_source": str(row.get("passage_source"))},
     )
+
+
+PREFERENCE = [
+    Phrasing("choice", "Która odpowiedź asystenta jest lepsza?", {
+        "first": ("pierwsza", "lepsza jest odpowiedź 1"), "second": ("druga", "lepsza jest odpowiedź 2")}),
+    Phrasing("choice", "Którą odpowiedź należy ocenić wyżej pod względem poprawności i przydatności?", {
+        "first": ("odpowiedź 1", "odpowiedź 1"), "second": ("odpowiedź 2", "odpowiedź 2")}),
+    Phrasing("choice", "Wskaż odpowiedź, która lepiej spełnia prośbę użytkownika.", {
+        "first": ("1", "pierwsza z odpowiedzi"), "second": ("2", "druga z odpowiedzi")}),
+    Phrasing("choice", "Która z dwóch odpowiedzi jest trafniejsza, bezpieczniejsza i bardziej pomocna?", {
+        "first": ("pierwsza", "odpowiedź 1"), "second": ("druga", "odpowiedź 2")}),
+    Phrasing("choice", "Which assistant reply is better?", {
+        "first": ("first", "reply 1 is better"), "second": ("second", "reply 2 is better")}),
+]
+
+RATING = {
+    "correctness": [
+        TypedQuestion("score", "Na ile odpowiedź asystenta jest poprawna merytorycznie?",
+                      {"low": "zawiera poważne błędy", "high": "w pełni poprawna"}),
+        TypedQuestion("score", "Oceń zgodność odpowiedzi z faktami.",
+                      {"low": "nieprawdziwa", "high": "całkowicie zgodna z faktami"}),
+        TypedQuestion("score", "How factually correct is the assistant's reply?",
+                      {"low": "seriously wrong", "high": "fully correct"}),
+    ],
+    "helpfulness": [
+        TypedQuestion("score", "Na ile odpowiedź jest pomocna dla użytkownika?",
+                      {"low": "bezużyteczna", "high": "w pełni pomocna"}),
+        TypedQuestion("score", "Jak dobrze odpowiedź spełnia prośbę użytkownika?",
+                      {"low": "wcale jej nie spełnia", "high": "spełnia ją całkowicie"}),
+        TypedQuestion("score", "How helpful is the assistant's reply to the user?",
+                      {"low": "useless", "high": "fully helpful"}),
+    ],
+}
+
+
+def _transcript(messages: list[dict]) -> str:
+    who = {"user": "Użytkownik", "assistant": "Asystent"}
+    return "\n\n".join(f"{who.get(m['role'], m['role'])}: {m['content'].strip()}" for m in messages)
+
+
+def _pllum_rows(row: dict) -> tuple[list[dict], str, str] | None:
+    chosen, rejected = row.get("chosen") or [], row.get("rejected") or []
+    if len(chosen) < 2 or len(chosen) != len(rejected) or chosen[-1].get("role") != "assistant":
+        return None
+    good, bad = chosen[-1].get("content"), rejected[-1].get("content")
+    if not (_ok(good) and _ok(bad)) or good.strip() == bad.strip():
+        return None
+    return chosen[:-1], good.strip(), bad.strip()
+
+
+def from_pllum(row: dict, idx: int, split: str) -> Iterable[DecisionExample]:
+    """NASK-PIB/PLLuM-Align (ranking, rating, dialogs): which of two replies people preferred
+    and, where rated, the 1-5 human ratings of correctness and helpfulness. Replies come from
+    open models only (paper, sec. 3.1.2); preferences and ratings are human."""
+
+    parts = _pllum_rows(row)
+    if parts is None:
+        return
+    history, good, bad = parts
+    rid = f"pllum-{row.get('id') or idx}"
+    base = dict(language="pl", source="NASK-PIB/PLLuM-Align", group=f"pllum:{text_key(history[0]['content'])}")
+    good_first = hashlib.sha256(rid.encode()).digest()[1] % 2 == 0
+    first, second = (good, bad) if good_first else (bad, good)
+    context = (f"Prośba użytkownika: {history[0]['content'].strip()}" if len(history) == 1
+               else f"Rozmowa:\n\n{_transcript(history)}")
+    p = _pick(PREFERENCE, rid)
+    yield DecisionExample(
+        id=f"{rid}-pair", state=f"{context}\n\nOdpowiedź 1:\n{first}\n\nOdpowiedź 2:\n{second}",
+        question=p.question(), answer=p.key("first" if good_first else "second"), family="pllum:pair",
+        meta={"label": "first" if good_first else "second"}, **base,
+    )
+    for side, reply in (("chosen", good), ("rejected", bad)):
+        details = row.get(f"{side}_rating_details") or {}
+        for criterion, phrasings in RATING.items():
+            score = details.get(criterion)
+            if score not in (1, 2, 3, 4, 5):
+                continue
+            q = _pick_text(phrasings, f"{rid}-{side}-{criterion}")
+            yield DecisionExample(
+                id=f"{rid}-{side}-{criterion}", state=f"{context}\n\nOdpowiedź asystenta:\n{reply}",
+                question=q, answer=str(score - 1), family=f"pllum:{criterion}",
+                meta={"label": str(score - 1)}, **base,
+            )
 
 
 EXAMS_INSTRUCTIONS = [
@@ -421,6 +504,8 @@ SOURCES = {
     "massive": Source(from_massive, fields("utt"), "massive"),
     "polqa": Source(from_polqa, fields("question", "passage_text"), "polqa"),
     "exams": Source(from_exams, lambda r: [r["question"]["stem"]], "exams"),
+    # PLLuM-Align took ~4,800 prompts from PolQA, so it is checked against PolQA's test split.
+    "pllum": Source(from_pllum, lambda r: [r["chosen"][0]["content"]] if r.get("chosen") else [], "polqa"),
     "belebele": Source(from_belebele, fields("flores_passage"), "belebele"),
     "include": Source(from_include, fields("question"), "exams"),  # EXAMS pl repeats INCLUDE items
     "opendecisions": Source(from_opendecisions, fields(), "opendecisions"),

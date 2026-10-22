@@ -74,3 +74,21 @@ def test_polqa_and_exams() -> None:
     assert SOURCES["exams"].pool == SOURCES["include"].pool
     assert SOURCES["exams"].texts(row) == ["Ile?"]
     assert overlap_key("Ile, to jest?") == overlap_key("ile to  jest")
+
+
+def test_pllum_pairs_and_ratings() -> None:
+    from bullfinch.sources import from_pllum
+
+    user = {"role": "user", "content": "Ile to 2+2?"}
+    row = {"id": "q_1", "chosen": [user, {"role": "assistant", "content": "4"}],
+           "rejected": [user, {"role": "assistant", "content": "5"}],
+           "chosen_rating_details": {"correctness": 5, "helpfulness": 4, "safety": 5},
+           "rejected_rating_details": {"correctness": 1, "helpfulness": 2}}
+    out = {e.family: e for e in from_pllum(row, 0, "train") if e.id.endswith(("pair", "chosen-correctness"))}
+    pair = out["pllum:pair"]
+    good_first = pair.state.index("Odpowiedź 1:\n4") > 0 if "Odpowiedź 1:\n4" in pair.state else False
+    assert pair.meta["label"] == ("first" if good_first else "second")
+    assert out["pllum:correctness"].answer == "4" and out["pllum:correctness"].question.type == "score"
+    assert len(list(from_pllum(row, 0, "train"))) == 5
+    same = {**row, "rejected": row["chosen"]}
+    assert list(from_pllum(same, 0, "train")) == []
