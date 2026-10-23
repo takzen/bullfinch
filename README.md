@@ -8,9 +8,10 @@ forward pass; no text is generated. It is the general-purpose sibling of
 [Serin 4B](https://huggingface.co/Takzen/serin-4b), the judge for chatbot security audits, and is
 built the same way: QLoRA on Qwen3.5-4B, trained and served on a laptop GPU.
 
-**Status: pilot 3 trained, not released yet.** On a panel of nine Polish test sets it averages
-85.8% accuracy, level with basal 2.0 4.5B (85.2%), the open Polish decision model, and +8.4 points
-over its untuned base. Full-test numbers and the weights come next.
+**Status: released** as [Takzen/bullfinch-4b](https://huggingface.co/Takzen/bullfinch-4b)
+(LoRA adapter, CC BY-SA 4.0). On nine full Polish test sets (24,168 rows) it averages 85.8%
+accuracy: level with basal 2.0 4.5B, the open Polish decision model (85.3%), with better
+calibrated probabilities, and 8.1 points above its untuned base (77.7%).
 
 ## Why
 
@@ -67,7 +68,30 @@ Belebele passages we evaluate on; CDSC-E and CDSC-R, `sdadas/8tags` and `sdadas/
 `decisionmodels/sn92-generalist-train-v1`, whose text and labels were written by commercial models.
 Bullfinch is never trained on the outputs of commercial models or decision APIs.
 
-## Results so far
+## Results
+
+Full test splits (every official test split plus Belebele and INCLUDE), the release adapter with
+its calibration, basal through `basal-serve` (`/v1/systemone`, official GGUF Q8_0 build).
+Accuracy in %.
+
+| Set | Test rows | Qwen3.5-4B untuned | basal 2.0 4.5B | **Bullfinch 4B** |
+|---|---|---|---|---|
+| PolEmo-IN review sentiment (4) | 722 | 81.6 | 92.2 | **92.4** |
+| DYK does the answer fit the question | 1,029 | 82.0 | 89.3 | **92.5** |
+| PSC do two summaries describe one article | 1,078 | 76.5 | 92.2 | **98.9** |
+| PolQA is the passage evidence | 13,729 | 76.3 | 83.4 | **86.6** |
+| MASSIVE assistant scenario (18) | 2,974 | 74.8 | **89.0** | 87.1 |
+| MASSIVE intent within the scenario | 2,694 | 87.6 | **93.0** | 92.8 |
+| PolEmo-OUT sentiment, other domains | 494 | 76.7 | 77.9 | **78.7** |
+| INCLUDE Polish exams (4) | 548 | 56.6 | **63.3** | 57.1 |
+| Belebele reading (4) | 900 | 87.4 | **87.6** | 86.4 |
+| **Mean of 9** | | 77.7 | 85.3 | **85.8** |
+| Mean calibration error (ECE) | | 11.9% | 4.6% | **2.5%** |
+
+Against basal: +0.5 points, paired bootstrap 95% CI −0.3 to +1.3, a tie on accuracy. Against the
+untuned base: +8.1 (CI +7.4 to +9.0).
+
+### Development panel
 
 Panel: 500 random test rows per set (seed 7, `scripts/evaluate.py --limit 500`), the same rows for
 every model, each model asked through its own interface: the Qwen-based models through the
@@ -99,7 +123,7 @@ Accuracy in %; the first six sets had their training split in pilots 2 and 3, th
 
 ## Plan
 
-1. Done: converters, baselines, three QLoRA pilots, the comparison with basal and with Unsloth.
-2. Full test splits for the release model, calibration, model card.
-3. Harder 4-option reading data, where basal still leads.
-4. Publish as `Takzen/bullfinch-4b`, with every data source attributed; a 0.8B sibling after that.
+1. Done: converters, baselines, three QLoRA pilots, the comparison with basal and with Unsloth,
+   full test splits, calibration, release as `Takzen/bullfinch-4b`.
+2. Harder 4-option reading data and Polish knowledge, where basal still leads.
+3. A 0.8B sibling, against basal-omni-pico.
