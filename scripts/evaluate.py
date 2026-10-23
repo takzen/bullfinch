@@ -54,6 +54,7 @@ def main() -> int:
     ap.add_argument("--calibration", type=Path)
     ap.add_argument("--tta", action="store_true")
     ap.add_argument("--limit", type=int, help="random sample of N rows per family (seed 7)")
+    ap.add_argument("--only", help="comma-separated families to score, picked after sampling so the rows match")
     ap.add_argument("--max-tokens", type=int, default=4096)
     args = ap.parse_args()
 
@@ -64,6 +65,8 @@ def main() -> int:
     if args.limit is not None:
         rng = random.Random(7)
         per_family = {k: rng.sample(v, min(args.limit, len(v))) for k, v in sorted(per_family.items())}
+    if args.only:
+        per_family = {k: v for k, v in per_family.items() if k in args.only.split(",")}
     panel = [ex for exs in per_family.values() for ex in exs]
     print(f"{len(panel)} rows: " + ", ".join(f"{k} {len(v)}" for k, v in per_family.items()), flush=True)
 
